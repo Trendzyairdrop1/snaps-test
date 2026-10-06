@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0B0B0B">
+<title>Snaps Downloader</title>
+<meta name="description" content="Copy a public Snapchat video link, paste it, and download the video in Low, High or HD.">
+<meta property="og:title" content="Snaps Downloader">
+<meta property="og:description" content="Copy a public Snapchat video link, paste it, and download the video.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 140'%3E%3Cpath d='M18 118 V60 C18 30 36 8 60 8 C84 8 102 30 102 60 V118 C102 130 90 134 84 124 C80 118 72 118 68 126 C64 134 56 134 52 126 C48 118 40 118 36 124 C30 134 18 130 18 118 Z' fill='%23FFD60A' stroke='%230B0B0B' stroke-width='7' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one phone-width column. Black hero with the ghost, ad band, then the form.
+     Success screen mirrors it: check, confirmation, "continue" card, ghost perched on the ad. */
+  :root {
+    --ink: #0B0B0B;
+    --paper: #FFFFFF;
+    --yellow: #FFD60A;
+    --yellow-tint: #FFF4B8;
+    --muted: #5E5A47;
+    --stage: #FFD60A;
+    --surface: #FFFFFF;
+    --line: #0B0B0B;
+    --shadow: #0B0B0B;
+    --cta-bg: #0B0B0B;
+    --cta-fg: #FFFFFF;
+    --cta-shadow: #FFD60A;
+    --focus: #0B0B0B;
+    --hatch-a: #FFF4B8;
+    --hatch-b: #FFEA7A;
+    --on-yellow: #0B0B0B;
+    --hero-bg: #0B0B0B;
+    --hero-fg: #FFFFFF;
+    --error: #B3261E;
+    --font-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+    --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #FFFFFF; --stage: #000000; --surface: #111111; --line: #F2F2F2; --shadow: #FFD60A;
+      --muted: #BDB89C; --cta-bg: #FFD60A; --cta-fg: #0B0B0B; --cta-shadow: #FFFFFF; --focus: #FFD60A;
+      --hatch-a: #1C1A0C; --hatch-b: #2A2606; --yellow-tint: #2A2606; --error: #FF8A80;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #FFFFFF; --stage: #000000; --surface: #111111; --line: #F2F2F2; --shadow: #FFD60A;
+    --muted: #BDB89C; --cta-bg: #FFD60A; --cta-fg: #0B0B0B; --cta-shadow: #FFFFFF; --focus: #FFD60A;
+    --hatch-a: #1C1A0C; --hatch-b: #2A2606; --yellow-tint: #2A2606; --error: #FF8A80;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--stage);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, p { margin: 0; }
+  button, input { font: inherit; color: inherit; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .app {
+    max-width: 440px;
+    min-height: 100%;
+    margin-inline: auto;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+  }
+  .screen { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  @media (min-width: 480px) {
+    body { padding-block: 32px; }
+    .app { min-height: calc(100% - 0px); border: 2.5px solid var(--line); box-shadow: 8px 8px 0 var(--shadow); }
+  }
+
+  .pad { padding-inline: 20px; }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    background: var(--hero-bg);
+    color: var(--hero-fg);
+    padding: 28px 20px 26px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+    overflow: hidden;
+    border-bottom: 5px solid var(--yellow);
+  }
+  .specks { position: absolute; inset: 0; pointer-events: none; }
+  .speck {
+    position: absolute;
+    background: var(--yellow);
+    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+    animation: twinkle 2.8s ease-in-out infinite;
+  }
+  .speck.w { background: #fff; }
+  @keyframes twinkle { 0%, 100% { opacity: .15; transform: scale(.6); } 50% { opacity: 1; transform: scale(1); } }
+
+  .ghost { width: 92px; height: auto; display: block; animation: float 4s ease-in-out infinite; position: relative; }
+  .ghost svg { display: block; width: 100%; height: auto; overflow: visible; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  .sheen-move { animation: sheen 3.8s ease-in-out infinite; }
+  @keyframes sheen { 0% { transform: translateX(-70px); } 55%, 100% { transform: translateX(170px); } }
+  .tw { animation: twinkle 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+  .brand {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.6rem, 7.4vw, 2.4rem);
+    line-height: 1.05;
+    letter-spacing: .01em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    position: relative;
+  }
+  .brand span { color: var(--yellow); }
+
+  .steps {
+    list-style: none; margin: 4px 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+    width: 100%; position: relative;
+  }
+  .steps li { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; line-height: 1.2; }
+  .step-n {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--yellow); color: var(--on-yellow);
+    display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 800; font-size: .85rem;
+  }
+
+  /* Ad slots */
+  .ad {
+    position: relative;
+    border-block: 2.5px solid var(--line);
+    min-height: 108px;
+    display: grid; place-items: center;
+    background: repeating-linear-gradient(135deg, var(--hatch-a) 0 12px, var(--hatch-b) 12px 24px);
+    text-align: center;
+    padding: 24px 20px;
+  }
+  .ad-tag {
+    position: absolute; top: 0; left: 0;
+    background: var(--ink); color: var(--surface);
+    font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    padding: 3px 8px;
+  }
+  .ad-text { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: .03em; color: var(--ink); }
+  .ad-size { display: block; font-family: var(--font-body); font-weight: 500; font-size: .78rem; text-transform: none; letter-spacing: 0; color: var(--muted); margin-top: 2px; }
+
+  /* Form */
+  .form { padding: 24px 20px 8px; display: flex; flex-direction: column; gap: 20px; }
+  .field input {
+    width: 100%;
+    background: var(--surface);
+    border: 2.5px solid var(--line);
+    border-radius: 6px;
+    padding: 15px 16px;
+    font-size: 1rem;
+    font-weight: 500;
+    box-shadow: 4px 4px 0 var(--shadow);
+  }
+  .field input::placeholder { color: var(--muted); opacity: .85; }
+  .field input:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .msg { min-height: 1.3em; margin-top: -8px; font-size: .88rem; font-weight: 600; color: var(--muted); }
+  .msg.err { color: var(--error); }
+
+  .btn {
+    position: relative;
+    border: 2.5px solid var(--line);
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .btn:focus-visible, .q input:focus-visible + .q-box { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .btn-paste {
+    background: var(--yellow); color: var(--on-yellow);
+    padding: 13px 34px; font-size: 1.05rem;
+    border-color: #0B0B0B;
+    box-shadow: 4px 4px 0 #0B0B0B;
+  }
+  .btn-paste:active, .btn-cta:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shadow); }
+  .paste-row { display: flex; justify-content: center; align-items: center; gap: 22px; margin-top: -2px; }
+  .gstar { width: 30px; height: 30px; flex: none; animation: twinkle 2.4s ease-in-out infinite; }
+  .gstar.s2 { width: 22px; height: 22px; animation-delay: 1.1s; align-self: flex-end; }
+  .gstar.s1 { align-self: flex-start; }
+  .gstar path { fill: var(--yellow); stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+
+  .quality { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .quality legend {
+    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+    text-align: center; width: 100%; padding: 0; margin-bottom: 12px;
+  }
+  .q-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .q { position: relative; display: block; cursor: pointer; }
+  .q input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .q-box {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    border: 2.5px solid var(--line); border-radius: 6px;
+    padding: 12px 6px 10px; background: var(--surface);
+    transition: transform .08s ease, box-shadow .08s ease, background .08s ease;
+  }
+  .q-box b { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; text-transform: uppercase; }
+  .q-box small { font-size: .74rem; color: var(--muted); font-weight: 500; text-align: center; line-height: 1.2; }
+  .q input:checked + .q-box {
+    background: var(--yellow); color: var(--on-yellow);
+    border-color: #0B0B0B; box-shadow: 4px 4px 0 var(--shadow);
+    transform: translate(-2px, -2px);
+  }
+  .q input:checked + .q-box small { color: #3B3820; }
+
+  .btn-cta {
+    width: 100%;
+    background: var(--cta-bg); color: var(--cta-fg);
+    padding: 17px 20px; font-size: 1.1rem;
+    box-shadow: 5px 5px 0 var(--cta-shadow);
+    font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    overflow: hidden; margin-top: 2px;
+  }
+  .btn-cta .bar { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--yellow); opacity: .9; transition: width .25s linear; }
+  .btn-cta .lbl { position: relative; display: inline-flex; align-items: center; gap: 10px; }
+  .btn-cta.busy { color: var(--on-yellow); cursor: progress; }
+  .btn-cta svg { width: 20px; height: 20px; flex: none; }
+
+  /* Success */
+  .hero.done-hero { padding-block: 34px 30px; gap: 12px; }
+  .check {
+    position: relative; width: 88px; height: 88px; border-radius: 50%;
+    background: var(--yellow); border: 3.5px solid #fff;
+    display: grid; place-items: center;
+    animation: pop .45s cubic-bezier(.3,1.6,.5,1) both;
+  }
+  .check svg { width: 46px; height: 46px; }
+  .check path { fill: none; stroke: #0B0B0B; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .done-title {
+    font-family: var(--font-display); font-weight: 800; font-size: clamp(1.5rem, 6.6vw, 2rem);
+    line-height: 1.1; text-transform: uppercase; text-wrap: balance; position: relative;
+  }
+  .done-sub { position: relative; color: #D8D4BC; font-size: .95rem; font-weight: 500; }
+  .done-sub b { color: var(--yellow); font-weight: 700; }
+
+  .continue-wrap { padding: 28px 20px 0; }
+  .continue {
+    width: 100%; text-align: left; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    background: var(--surface); color: var(--ink);
+    border: 2.5px solid var(--line); border-radius: 6px;
+    padding: 20px 18px; box-shadow: 5px 5px 0 var(--shadow);
+    font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; line-height: 1.15; text-transform: uppercase;
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .continue:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--shadow); }
+  .continue:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+  .continue .go {
+    flex: none; width: 46px; height: 46px; border-radius: 50%;
+    background: var(--yellow); border: 2.5px solid #0B0B0B; color: #0B0B0B;
+    display: grid; place-items: center;
+  }
+  .continue .go svg { width: 22px; height: 22px; }
+
+  .perch { display: flex; justify-content: center; margin-top: auto; padding-top: 28px; position: relative; z-index: 1; }
+  .perch .ghost { width: 70px; animation: none; margin-bottom: -3px; }
+  .ad-bottom { margin-top: 0; }
+
+  .foot {
+    background: var(--surface);
+    padding: 18px 20px 22px;
+    display: flex; flex-direction: column; gap: 14px; align-items: center;
+    font-size: .8rem; color: var(--muted); text-align: center;
+  }
+  .foot p { max-width: 34ch; text-wrap: balance; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .speck, .gstar, .tw { opacity: 1; }
+  }
+
+  /* Ad slots with a live banner */
+  .ad-holder { display: grid; place-items: center; width: 100%; min-width: 0; }
+  .ad-holder iframe { display: block; border: 0; max-width: 100%; background: transparent; }
+  .ad.has-ad { background: var(--surface); padding-block: 22px 12px; min-height: 0; }
+  .ad.has-ad .ad-text { display: none; }
+  .ad:not(.has-ad) .ad-holder { display: none; }
+
+  /* Download progress without a known size */
+  .btn-cta.indeterminate .bar { width: 100%; animation: barpulse 1.1s ease-in-out infinite; }
+  @keyframes barpulse { 0%, 100% { opacity: .45; } 50% { opacity: .95; } }
+
+  /* Success view */
+  .linkbtn {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    color: var(--yellow); font: inherit; font-weight: 700;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .linkbtn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+  .save-note { position: relative; min-height: 1.2em; font-size: .82rem; color: #D8D4BC; }
+
+  /* Video-style quality choices */
+  .q-box { gap: 3px; padding: 12px 6px 11px; }
+  .q-ic { width: 28px; height: 22px; margin-bottom: 3px; color: var(--ink); }
+  .q input:checked + .q-box .q-ic { color: #0B0B0B; }
+  .q-box em {
+    font-style: normal; font-family: var(--font-display); font-weight: 800;
+    font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; opacity: .75;
+  }
+  .q-box b { font-size: 1.15rem; line-height: 1.1; }
+  .q-note { margin: 12px 0 0; text-align: center; font-size: .84rem; font-weight: 500; color: var(--muted); }
+
+  /* Footer credit and socials */
+  .foot { gap: 12px; padding: 22px 20px 26px; border-top: 2.5px solid var(--line); }
+  .made { font-size: .95rem; color: var(--ink); }
+  .made b { font-family: var(--font-display); font-weight: 800; letter-spacing: .02em; }
+  .socials { list-style: none; margin: 0; padding: 0; display: flex; gap: 14px; justify-content: center; }
+  .socials a {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--yellow); color: #0B0B0B;
+    border: 2.5px solid #0B0B0B;
+    display: grid; place-items: center;
+    box-shadow: 3px 3px 0 var(--shadow);
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .socials a:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--shadow); }
+  .socials a:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
+  .socials a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .socials svg { width: 22px; height: 22px; display: block; }
+  .fine { font-size: .78rem; color: var(--muted); max-width: 34ch; text-wrap: balance; }
+
+
+</style>
+<style>
+  :root { padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+<style>.demo-note{margin:-6px 0 0;text-align:center;font-size:.78rem;font-weight:600;color:var(--muted)}</style>
+</head>
+<body>
+<main class="app" id="app">
+
+  <!-- Screen 1: home -->
+  <section class="screen" id="screen-home" aria-labelledby="brand">
+    <header class="hero">
+      <div class="specks" data-n="16" aria-hidden="true"></div>
+      <div class="ghost" data-ghost aria-hidden="true"></div>
+      <h1 class="brand" id="brand">Snaps <span>Downloader</span></h1>
+      <ol class="steps">
+        <li><span class="step-n">1</span>Copy video link</li>
+        <li><span class="step-n">2</span>Paste it</li>
+        <li><span class="step-n">3</span>And download</li>
+      </ol>
+    </header>
+
+    <aside class="ad" data-ad-slot role="complementary" aria-label="Advertisement">
+      <span class="ad-tag">Ad</span>
+      <div class="ad-holder"></div>
+      <p class="ad-text">Show ad here<span class="ad-size">Adsterra banner slot</span></p>
+    </aside>
+
+    <form class="form" id="dl-form" novalidate>
+      <div class="field">
+        <label class="sr" for="link">Snapchat video link</label>
+        <input id="link" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste video link here">
+      </div>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+
+      <div class="paste-row">
+        <svg class="gstar s1" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L25 15 L37 20 L25 25 L20 37 L15 25 L3 20 L15 15 Z"/></svg>
+        <button class="btn btn-paste" type="button" id="paste">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg>
+          Paste
+        </button>
+        <svg class="gstar s2" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 L25 15 L37 20 L25 25 L20 37 L15 25 L3 20 L15 15 Z"/></svg>
+      </div>
+
+      <fieldset class="quality">
+        <legend>Video quality</legend>
+        <div class="q-grid">
+          <label class="q"><input type="radio" name="quality" value="Low"><span class="q-box"><svg class="q-ic" viewBox="0 0 28 22" aria-hidden="true"><rect x="1.5" y="1.5" width="25" height="19" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M11.5 6.8v8.4l7-4.2z" fill="currentColor"/></svg><b>Low</b><em>360p</em><small>Small file</small></span></label>
+          <label class="q"><input type="radio" name="quality" value="High" checked><span class="q-box"><svg class="q-ic" viewBox="0 0 28 22" aria-hidden="true"><rect x="1.5" y="1.5" width="25" height="19" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M11.5 6.8v8.4l7-4.2z" fill="currentColor"/></svg><b>High</b><em>720p</em><small>Sharp video</small></span></label>
+          <label class="q"><input type="radio" name="quality" value="HD"><span class="q-box"><svg class="q-ic" viewBox="0 0 28 22" aria-hidden="true"><rect x="1.5" y="1.5" width="25" height="19" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M11.5 6.8v8.4l7-4.2z" fill="currentColor"/></svg><b>HD</b><em>Original</em><small>Best video</small></span></label>
+        </div>
+        <p class="q-note">Saves as an MP4 video that plays on any phone.</p>
+      </fieldset>
+
+      <button class="btn btn-cta" type="submit" id="go">
+        <span class="bar" id="bar" aria-hidden="true"></span>
+        <span class="lbl" id="go-lbl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"/><path d="M6 11l6 6 6-6"/><path d="M5 21h14"/></svg>
+          <span id="go-text">Download now</span>
+        </span>
+      </button>
+          <p class="demo-note">Test version: downloads are simulated. Ads and design are real.</p>
+    </form>
+  </section>
+
+  <!-- Screen 2: success -->
+  <section class="screen" id="screen-done" hidden aria-labelledby="done-title">
+    <header class="hero done-hero">
+      <div class="specks" data-n="14" aria-hidden="true"></div>
+      <div class="check" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M10 25 L20 35 L38 14"/></svg></div>
+      <h2 class="done-title" id="done-title">Your video has been downloaded</h2>
+      <p class="done-sub"><b id="done-q">High</b> quality. <button class="linkbtn" id="save-again" type="button">Did not save? Tap to save again</button></p>
+      <p class="save-note" id="save-note" role="status" aria-live="polite"></p>
+    </header>
+
+    <div class="continue-wrap">
+      <button class="continue" type="button" id="again">
+        <span>Continue to download more videos</span>
+        <span class="go" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+        </span>
+      </button>
+    </div>
+
+    <div class="perch"><div class="ghost" data-ghost aria-hidden="true"></div></div>
+    <aside class="ad ad-bottom" data-ad-slot role="complementary" aria-label="Advertisement">
+      <span class="ad-tag">Ad</span>
+      <div class="ad-holder"></div>
+      <p class="ad-text">Show ad here<span class="ad-size">Adsterra banner slot</span></p>
+    </aside>
+  </section>
+
+  <footer class="foot">
+    <p class="made">Made by <b>SJ Ejima</b></p>
+    <ul class="socials" aria-label="SJ Ejima on social media">
+      <li><a href="https://www.facebook.com/profile.php?id=61587480895681" target="_blank" rel="noopener noreferrer" aria-label="SJ Ejima on Facebook" title="SJ Ejima on Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-7.6h2.6l.4-3h-3V8.5c0-.9.3-1.5 1.6-1.5h1.6V4.3c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H8v3h2.5V21z"/></svg></a></li>
+      <li><a href="https://x.com/SJEjima" target="_blank" rel="noopener noreferrer" aria-label="SJ Ejima on X" title="SJ Ejima on X"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L2 3h6.4l4.4 5.8zm-1.1 16.2h1.7L7.4 4.7H5.6z"/></svg></a></li>
+      <li><a href="https://instagram.com/sjejima" target="_blank" rel="noopener noreferrer" aria-label="SJ Ejima on Instagram" title="SJ Ejima on Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="7" r="1.2" fill="currentColor"/></svg></a></li>
+    </ul>
+    <p class="fine">Snaps Downloader is not affiliated with Snapchat. Only save videos you have the right to keep.</p>
+  </footer>
+</main>
+<script>
+// Site settings. Edit this file, no other code needs to change.
+//
+// ADSTERRA
+// Each ad from Adsterra comes as a small piece of code. Copy only the web address (the https://... part
+// inside src="...") and, for the native banner, the id of the div.
+//
+// socialBar    -> goes in extraScripts below. It loads once and floats over the page.
+// native       -> the Native Banner. It shows inside the two ad spots (home and success screens).
+//                 src         the address from the script that ends in invoke.js
+//                 containerId the id of the div, copied whole (it starts with container-)
+// banner       -> optional old-style 320x50 banner. Leave empty if you use the native banner.
+//
+// While nothing is filled in, the ad spots show a placeholder.
+window.SNAPS_CONFIG = {
+  preview: true,
+  adsterra: {
+    native: {
+      src: 'https://pl31675951.profitableratecpmnetwork.com/16967c7f84b640e39b3421e5a04f3a54/invoke.js',
+      containerId: 'container-16967c7f84b640e39b3421e5a04f3a54'
+    },
+    banner: { key: '', src: '', width: 320, height: 50 },
+    extraScripts: [
+      // Social Bar
+      'https://pl31675952.profitableratecpmnetwork.com/98/48/ee/9848ee4692d2d745466bb2d55eb30419.js'
+    ]
+  }
+};
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var CFG = window.SNAPS_CONFIG || {};
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  /* ---------- Ghost mascot (original character), one instance per placeholder ---------- */
+  var uid = 0;
+  function ghostSVG() {
+    uid += 1;
+    var g = 'gg' + uid, c = 'gc' + uid;
+    var body = 'M18 118 V60 C18 30 36 8 60 8 C84 8 102 30 102 60 V118 C102 130 90 134 84 124 C80 118 72 118 68 126 C64 134 56 134 52 126 C48 118 40 118 36 124 C30 134 18 130 18 118 Z';
+    var dots = [[36,34,2.2,0],[84,40,1.8,.6],[28,88,1.8,1.1],[92,92,2.2,1.6],[72,22,1.6,.3],[48,106,1.6,.9]];
+    var dotsSVG = dots.map(function (d) {
+      return '<circle class="tw" cx="' + d[0] + '" cy="' + d[1] + '" r="' + d[2] + '" fill="#fff" style="animation-delay:' + d[3] + 's"/>';
+    }).join('');
+    return '<svg viewBox="0 0 120 140" role="img" aria-label="">' +
+      '<defs><linearGradient id="' + g + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE766"/><stop offset=".55" stop-color="#FFD60A"/><stop offset="1" stop-color="#F0BE00"/></linearGradient>' +
+      '<clipPath id="' + c + '"><path d="' + body + '"/></clipPath></defs>' +
+      '<path d="' + body + '" fill="url(#' + g + ')"/>' +
+      '<g clip-path="url(#' + c + ')"><g class="sheen-move"><rect x="-40" y="-10" width="26" height="170" fill="#fff" opacity=".6" transform="skewX(-18)"/></g></g>' +
+      dotsSVG +
+      '<path d="' + body + '" fill="none" stroke="#0B0B0B" stroke-width="4" stroke-linejoin="round"/>' +
+      '<ellipse cx="46" cy="55" rx="4.5" ry="6.5" fill="#0B0B0B"/><ellipse cx="74" cy="55" rx="4.5" ry="6.5" fill="#0B0B0B"/>' +
+      '<circle cx="47.6" cy="52.5" r="1.5" fill="#fff"/><circle cx="75.6" cy="52.5" r="1.5" fill="#fff"/>' +
+      '<circle cx="36" cy="72" r="5" fill="#fff" opacity=".7"/><circle cx="84" cy="72" r="5" fill="#fff" opacity=".7"/>' +
+      '<path d="M50 72 Q60 83 70 72" fill="none" stroke="#0B0B0B" stroke-width="3.6" stroke-linecap="round"/>' +
+      '<path d="M60 90 V106 M52 99 L60 107 L68 99" fill="none" stroke="#0B0B0B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>';
+  }
+  $$('[data-ghost]').forEach(function (el) { el.innerHTML = ghostSVG(); });
+
+  /* ---------- Glitter specks (fixed seed, so layout is stable) ---------- */
+  function seeded(seed) { return function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }; }
+  $$('.specks').forEach(function (box, i) {
+    var rnd = seeded(7 + i * 31), n = parseInt(box.getAttribute('data-n'), 10) || 12;
+    for (var k = 0; k < n; k++) {
+      var s = document.createElement('span');
+      var size = 6 + Math.round(rnd() * 10);
+      s.className = 'speck' + (rnd() > .6 ? ' w' : '');
+      s.style.cssText = 'left:' + (rnd() * 96).toFixed(1) + '%;top:' + (rnd() * 92).toFixed(1) + '%;width:' + size + 'px;height:' + size + 'px;animation-delay:' + (rnd() * 2.8).toFixed(2) + 's';
+      box.appendChild(s);
+    }
+  });
+
+  /* ---------- Adsterra ---------- */
+  function httpsOnly(u) { return typeof u === 'string' && /^https:\/\//i.test(u); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function mountAds(root) {
+    var ads = CFG.adsterra || {};
+    var nat = ads.native || {};
+    var nativeReady = httpsOnly(nat.src) && /^[A-Za-z0-9_-]+$/.test(nat.containerId || '');
+    var b = ads.banner || {};
+    var ready = b.key && httpsOnly(b.src);
+
+    // The native ad needs one container with a fixed id, so lift it out of the other screen first.
+    if (nativeReady) {
+      var old = document.getElementById(nat.containerId);
+      if (old) old.remove();
+      $$('script[data-snaps-native]').forEach(function (s) { s.remove(); });
+    }
+
+    $$('[data-ad-slot]', root).forEach(function (slot) {
+      var holder = $('.ad-holder', slot);
+      holder.textContent = '';
+      slot.classList.toggle('has-ad', !!(nativeReady || ready));
+      if (nativeReady) {
+        var box = document.createElement('div');
+        box.id = nat.containerId;
+        holder.appendChild(box);
+        var ns = document.createElement('script');
+        ns.async = true;
+        ns.setAttribute('data-cfasync', 'false');
+        ns.setAttribute('data-snaps-native', '');
+        ns.src = nat.src;
+        holder.appendChild(ns);
+        return;
+      }
+      if (!ready) return;
+      var w = Number(b.width) || 320, h = Number(b.height) || 50;
+      var frame = document.createElement('iframe');
+      frame.width = w;
+      frame.height = h;
+      frame.title = 'Advertisement';
+      frame.setAttribute('scrolling', 'no');
+      frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
+      frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;overflow:hidden;background:transparent">' +
+        '<script>atOptions = {"key":"' + esc(b.key) + '","format":"iframe","height":' + h + ',"width":' + w + ',"params":{}};<\/script>' +
+        '<script src="' + esc(b.src) + '"><\/script></body></html>';
+      holder.appendChild(frame);
+    });
+  }
+
+  (CFG.adsterra && CFG.adsterra.extraScripts || []).forEach(function (src) {
+    if (!httpsOnly(src)) return;
+    var s = document.createElement('script');
+    s.src = src; s.async = true;
+    document.body.appendChild(s);
+  });
+
+  /* ---------- Views (home, then success after the file has finished) ---------- */
+  var home = $('#screen-home'), done = $('#screen-done');
+  var saved = null; // { blob, filename } of the last finished download
+
+  function show(name, push) {
+    home.hidden = name !== 'home';
+    done.hidden = name !== 'done';
+    if (push) {
+      try { history.pushState({ v: name }, '', name === 'done' ? '#done' : location.pathname + location.search); } catch (e) {}
+    }
+    window.scrollTo(0, 0);
+    mountAds(name === 'done' ? done : home);
+  }
+  window.addEventListener('popstate', function () {
+    show(location.hash === '#done' && saved ? 'done' : 'home', false);
+  });
+  if (location.hash === '#done') {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
+
+  /* ---------- Form ---------- */
+  var input = $('#link'), msg = $('#msg'), go = $('#go'), goText = $('#go-text'), bar = $('#bar');
+  var SAMPLE = 'https://www.snapchat.com/spotlight/preview-sample';
+  var linkRe = /^https?:\/\/([a-z0-9-]+\.)*snapchat\.com\/\S+/i;
+  var busy = false;
+
+  function say(text, isErr) { msg.textContent = text || ''; msg.classList.toggle('err', !!isErr); }
+  function pickLink(text) {
+    text = String(text || '').trim();
+    var m = text.match(/https?:\/\/[^\s"'<>]+/i);
+    return m ? m[0].replace(/[),.;!?]+$/, '') : text;
+  }
+  function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
+  function setBar(p) { bar.style.width = Math.max(0, Math.min(1, p)) * 100 + '%'; }
+  function resetButton() {
+    go.classList.remove('busy', 'indeterminate');
+    setBar(0);
+    goText.textContent = 'Download now';
+    busy = false;
+  }
+
+  input.addEventListener('input', function () { say(''); });
+  input.addEventListener('paste', function () {
+    setTimeout(function () { input.value = pickLink(input.value); }, 0);
+  });
+
+  /* Paste button: reads what you copied and fills the box. */
+  $('#paste').addEventListener('click', function () {
+    function manual() { input.focus(); say('Tap and hold in the box, then choose Paste.'); }
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function (t) {
+        t = pickLink(t);
+        if (t) { input.value = t; say(''); input.focus(); }
+        else { say('Nothing copied yet. Copy the video link in Snapchat first.', true); }
+      }).catch(function () {
+        if (CFG.preview) { input.value = SAMPLE; say(''); } else { manual(); }
+      });
+    } else if (CFG.preview) { input.value = SAMPLE; say(''); }
+    else { manual(); }
+  });
+
+  /* ---------- Download ---------- */
+  function readError(res) {
+    return res.json().catch(function () { return {}; }).then(function (d) {
+      throw new Error(d.error || 'Something went wrong. Please try again.');
+    });
+  }
+
+  function realDownload(link, q, onProgress) {
+    return fetch('/api/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: link })
+    }).then(function (r) {
+      if (!r.ok) return readError(r);
+      return fetch('/api/download?url=' + encodeURIComponent(link) + '&q=' + encodeURIComponent(q.toLowerCase()));
+    }).then(function (res) {
+      if (!res.ok) return readError(res);
+      var total = Number(res.headers.get('content-length')) || 0;
+      var cd = res.headers.get('content-disposition') || '';
+      var name = (cd.match(/filename="?([^";]+)"?/i) || [])[1] || ('snaps-' + Date.now() + '.mp4');
+      if (!res.body || !res.body.getReader) {
+        return res.blob().then(function (blob) { return { blob: blob, filename: name }; });
+      }
+      var reader = res.body.getReader(), chunks = [], got = 0;
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return { blob: new Blob(chunks, { type: 'video/mp4' }), filename: name };
+          chunks.push(r.value);
+          got += r.value.length;
+          onProgress(total ? got / total : null, got);
+          return pump();
+        });
+      }
+      return pump();
+    });
+  }
+
+  /* Preview only: pretends to download so the flow can be shown without a server. */
+  function fakeDownload(link, q, onProgress) {
+    return new Promise(function (resolve) {
+      var p = 0;
+      setTimeout(function () {
+        var t = setInterval(function () {
+          p = Math.min(1, p + 0.07 + Math.random() * 0.06);
+          onProgress(p, p * 8.4 * 1048576);
+          if (p >= 1) { clearInterval(t); setTimeout(function () { resolve({ blob: new Blob(['preview'], { type: 'video/mp4' }), filename: 'snaps-preview.mp4' }); }, 250); }
+        }, 180);
+      }, 900);
+    });
+  }
+
+  function saveBlob(file) {
+    if (CFG.preview) return;
+    var url = URL.createObjectURL(file.blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = file.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+
+  $('#dl-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (busy) return;
+    var v = pickLink(input.value);
+    input.value = v;
+    if (!v) { say('Paste a Snapchat video link first.', true); input.focus(); return; }
+    if (!linkRe.test(v)) { say('That does not look like a Snapchat link. Copy the video link from Snapchat and paste it here.', true); input.focus(); return; }
+    say('');
+    busy = true;
+    var q = ($('input[name="quality"]:checked') || {}).value || 'High';
+    setBar(0);
+    go.classList.add('busy');
+    goText.textContent = 'Preparing your video';
+
+    function onProgress(p, got) {
+      if (p == null) {
+        go.classList.add('indeterminate');
+        goText.textContent = 'Downloading ' + mb(got);
+      } else {
+        go.classList.remove('indeterminate');
+        setBar(p);
+        goText.textContent = 'Downloading ' + Math.round(p * 100) + '%';
+      }
+    }
+
+    (CFG.preview ? fakeDownload : realDownload)(v, q, onProgress).then(function (file) {
+      saved = file;
+      saveBlob(file);
+      $('#done-q').textContent = q;
+      resetButton();
+      show('done', true);
+    }).catch(function (err) {
+      resetButton();
+      say(err && err.message ? err.message : 'Could not reach the server. Check your connection and try again.', true);
+    });
+  });
+
+  /* ---------- Success view ---------- */
+  $('#again').addEventListener('click', function () {
+    input.value = '';
+    say('');
+    show('home', true);
+    input.focus({ preventScroll: true });
+  });
+  $('#save-again').addEventListener('click', function () {
+    if (CFG.preview) { $('#save-note').textContent = 'Preview only. On the live site this saves the file again.'; return; }
+    if (saved) saveBlob(saved);
+  });
+
+  mountAds(home);
+})();
+
+</script>
+</body>
+</html>
